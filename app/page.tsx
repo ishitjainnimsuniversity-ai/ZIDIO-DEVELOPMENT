@@ -9,9 +9,9 @@ import {
   ArrowRight,
   ShieldCheck,
   Zap,
-  Users,
-  CheckCircle2
+  Play
 } from "lucide-react";
+import CinematicIntroPlayer from "@/components/CinematicIntroPlayer";
 
 export default function Home() {
   return (
@@ -28,6 +28,12 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-3">
+          <a
+            href="#intro-video"
+            className="hidden md:flex items-center gap-1.5 text-xs sm:text-sm font-medium text-emerald-400 hover:text-emerald-300 px-3 py-1.5 rounded-lg bg-emerald-950/30 border border-emerald-500/20 transition"
+          >
+            <Play className="w-3 h-3 fill-emerald-400" /> 4K Intro Video
+          </a>
           <Link
             href="/dashboard"
             className="text-xs sm:text-sm font-medium text-slate-300 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-800/60 transition"
@@ -50,8 +56,8 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="mx-auto flex max-w-5xl flex-col items-center px-6 pt-16 pb-12 text-center">
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-xs sm:text-sm font-medium text-blue-400">
+      <section className="mx-auto flex max-w-5xl flex-col items-center px-6 pt-16 pb-10 text-center">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-xs sm:text-sm font-medium text-blue-400 shadow-inner">
           <Sparkles className="w-4 h-4 text-blue-400" />
           Enterprise Customer-Feedback Intelligence Platform
         </div>
@@ -77,20 +83,43 @@ export default function Home() {
             <BarChart2 className="w-5 h-5" /> Launch Live Dashboard <ArrowRight className="w-4 h-4" />
           </Link>
 
+          <a
+            href="#intro-video"
+            className="flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-950/40 px-5 py-3.5 text-sm sm:text-base font-semibold text-emerald-300 hover:bg-emerald-900/50 active:scale-95 transition"
+          >
+            <Play className="w-4 h-4 fill-emerald-400" /> Watch 4K Intro Video
+          </a>
+
           <Link
             href="/ask"
-            className="flex items-center gap-2 rounded-xl border border-purple-500/40 bg-purple-950/40 px-6 py-3.5 text-sm sm:text-base font-semibold text-purple-200 hover:bg-purple-900/50 active:scale-95 transition"
+            className="flex items-center gap-2 rounded-xl border border-purple-500/40 bg-purple-950/40 px-5 py-3.5 text-sm sm:text-base font-semibold text-purple-200 hover:bg-purple-900/50 active:scale-95 transition"
           >
-            <Mic className="w-5 h-5 text-purple-400" /> Ask AI Copilot (Voice)
+            <Mic className="w-5 h-5 text-purple-400" /> Ask AI Copilot
           </Link>
 
           <Link
             href="/showcase"
             className="flex items-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-950/30 px-5 py-3.5 text-sm sm:text-base font-semibold text-cyan-300 hover:bg-cyan-900/40 active:scale-95 transition"
           >
-            <Zap className="w-5 h-5 text-cyan-400" /> Live Demo Console
+            <Zap className="w-5 h-5 text-cyan-400" /> Demo Console
           </Link>
         </div>
+      </section>
+
+      {/* 4K Cinematic Introduction Video Section */}
+      <section id="intro-video" className="mx-auto max-w-4xl px-4 sm:px-6 pt-4 pb-14">
+        <div className="text-center mb-5">
+          <span className="text-[11px] font-bold tracking-wider uppercase text-blue-400">
+            OFFICIAL 4K INTRODUCTION
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1">
+            Experience LOOP in High-Definition
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1.5">
+            Cinematic platform introduction paired with iconic English soundtrack hits.
+          </p>
+        </div>
+        <CinematicIntroPlayer />
       </section>
 
       {/* Feature Grid with Direct Navigation */}
@@ -162,10 +191,10 @@ export default function Home() {
               <TrendingUp className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-bold text-white group-hover:text-amber-400 transition-colors">
-              Thematic Trends
+              Thematic Trends & Spikes
             </h3>
             <p className="mt-2 text-sm text-slate-400 leading-relaxed">
-              Automated theme clustering for Billing, Authentication, Mobile App crashes, and Support response times.
+              Automated theme clustering, 1-click AI theme extraction, and anomaly surge detection (+250%).
             </p>
             <div className="mt-4 flex items-center text-xs font-medium text-amber-400">
               View Trends <ArrowRight className="w-3.5 h-3.5 ml-1 group-hover:translate-x-1 transition-transform" />
