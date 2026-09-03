@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   BarChart2,
@@ -14,7 +16,7 @@ import CinematicAppOpening from "@/components/CinematicAppOpening";
 export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 text-white selection:bg-blue-500/30">
-      {/* Fullscreen Cinematic Opening Sequence - Plays Automatically & Opens App */}
+      {/* Fullscreen Cinematic Opening Sequence */}
       <CinematicAppOpening />
 
       {/* Top Navigation */}
