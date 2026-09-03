@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowRight, Volume2, VolumeX, Music } from "lucide-react";
+import { ArrowRight, Volume2, VolumeX, Music, Play } from "lucide-react";
 
 export default function CinematicAppOpening() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [needsGesture, setNeedsGesture] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isFadingOut, setIsFadingOut] = useState(false);
 
@@ -23,73 +25,65 @@ export default function CinematicAppOpening() {
     }
   }, []);
 
-  const unmuteAudio = useCallback(() => {
-    if (videoRef.current) {
+  const startPlaybackWithSound = useCallback(async () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    try {
+      video.currentTime = 0;
+      video.muted = false;
+      video.volume = 1.0;
+      await video.play();
+      setIsMuted(false);
+      setIsPlaying(true);
+      setNeedsGesture(false);
+    } catch {
+      // Browser blocked unmuted autoplay: start video muted and listen for any touch/click/key
+      video.muted = true;
+      setIsMuted(true);
       try {
-        videoRef.current.muted = false;
-        videoRef.current.volume = 1.0;
-        setIsMuted(false);
+        await video.play();
+        setIsPlaying(true);
+        setNeedsGesture(true);
       } catch (e) {
-        console.warn("Unmute failed:", e);
+        console.error("Autoplay completely prevented:", e);
       }
     }
   }, []);
 
-  // Automatic unmuted playback & global listener for immediate audio activation
+  const unmuteAndRestartAudio = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.muted = false;
+    video.volume = 1.0;
+    setIsMuted(false);
+    setNeedsGesture(false);
+
+    // If it started muted and user clicked within the first 2 seconds, restart from beginning so they don't miss the song
+    if (video.currentTime < 2.5) {
+      video.currentTime = 0;
+    }
+    video.play().catch(() => {});
+  }, []);
+
+  // Try automatic unmuted playback immediately when opened
   useEffect(() => {
     if (!isOpen) return;
 
-    // 1. Initialize Web Audio Context if available
-    try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (AudioCtx) {
-        const ctx = new AudioCtx();
-        if (ctx.state === "suspended") {
-          ctx.resume().catch(() => {});
-        }
-      }
-    } catch {}
+    const timer = setTimeout(() => {
+      startPlaybackWithSound();
+    }, 50);
 
-    // 2. Play video automatically with full audio
-    const playVideoWithAudio = async () => {
-      const video = videoRef.current;
-      if (!video) return;
-
-      try {
-        video.currentTime = 0;
-        video.muted = false;
-        video.volume = 1.0;
-        await video.play();
-        setIsMuted(false);
-      } catch {
-        // If the browser strictly enforces muted initial autoplay:
-        // Play video immediately, and attach listeners to activate audio on the very first signal
-        if (video) {
-          video.muted = true;
-          setIsMuted(true);
-          try {
-            await video.play();
-          } catch (e) {
-            console.error("Autoplay playback error:", e);
-          }
-        }
-      }
-    };
-
-    const timer = setTimeout(playVideoWithAudio, 20);
-
-    // Any window event immediately un-mutes the song without needing any button
+    // Any interaction anywhere on the screen instantly un-mutes the song
     const handleGlobalSignal = () => {
-      unmuteAudio();
+      unmuteAndRestartAudio();
     };
 
     window.addEventListener("pointerdown", handleGlobalSignal, { passive: true });
     window.addEventListener("touchstart", handleGlobalSignal, { passive: true });
     window.addEventListener("click", handleGlobalSignal, { passive: true });
     window.addEventListener("keydown", handleGlobalSignal, { passive: true });
-    window.addEventListener("wheel", handleGlobalSignal, { passive: true });
-    window.addEventListener("focus", handleGlobalSignal, { passive: true });
-    document.addEventListener("visibilitychange", handleGlobalSignal, { passive: true });
 
     return () => {
       clearTimeout(timer);
@@ -97,11 +91,8 @@ export default function CinematicAppOpening() {
       window.removeEventListener("touchstart", handleGlobalSignal);
       window.removeEventListener("click", handleGlobalSignal);
       window.removeEventListener("keydown", handleGlobalSignal);
-      window.removeEventListener("wheel", handleGlobalSignal);
-      window.removeEventListener("focus", handleGlobalSignal);
-      document.removeEventListener("visibilitychange", handleGlobalSignal);
     };
-  }, [isOpen, unmuteAudio]);
+  }, [isOpen, startPlaybackWithSound, unmuteAndRestartAudio]);
 
   const handleFinish = () => {
     setIsFadingOut(true);
@@ -113,14 +104,14 @@ export default function CinematicAppOpening() {
         sessionStorage.setItem("loop_cinematic_intro_seen", "true");
       } catch {}
       setIsOpen(false);
-    }, 400); // Quick smooth 400ms transition to open the app
+    }, 400); // Quick smooth transition to open the app
   };
 
   const handleToggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!videoRef.current) return;
     if (isMuted) {
-      unmuteAudio();
+      unmuteAndRestartAudio();
     } else {
       videoRef.current.muted = true;
       setIsMuted(true);
@@ -138,32 +129,21 @@ export default function CinematicAppOpening() {
 
   return (
     <div
-      onClick={unmuteAudio}
+      onClick={unmuteAndRestartAudio}
       className={`fixed inset-0 z-[99999] bg-black flex flex-col items-center justify-center select-none overflow-hidden transition-opacity duration-400 ease-out cursor-pointer ${
         isFadingOut ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
     >
       {/* Top Floating Minimal Controls: Audio State & Skip only */}
       <div className="absolute top-4 inset-x-4 sm:top-6 sm:inset-x-8 flex items-center justify-between z-30 pointer-events-auto">
-        {/* Subtle Audio Status Indicator */}
-        <div
-          onClick={unmuteAudio}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 border border-white/20 text-white text-xs backdrop-blur-md transition hover:bg-black/80"
-        >
-          {isMuted ? (
-            <>
-              <VolumeX className="w-4 h-4 text-rose-400 animate-pulse" />
-              <span className="text-[11px] text-rose-300 font-medium hidden sm:inline">
-                Tap anywhere to unmute song
-              </span>
-            </>
-          ) : (
-            <>
+        <div className="flex items-center gap-2">
+          {!isMuted && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 border border-white/20 text-white text-xs backdrop-blur-md">
               <Music className="w-3.5 h-3.5 text-blue-400 animate-bounce" />
-              <span className="text-[11px] text-blue-300 font-medium hidden sm:inline">
+              <span className="text-[11px] text-blue-300 font-medium">
                 Cheri Cheri Lady Playing
               </span>
-            </>
+            </div>
           )}
         </div>
 
@@ -194,7 +174,7 @@ export default function CinematicAppOpening() {
         </div>
       </div>
 
-      {/* Main Fullscreen Video - Auto-plays directly with Cheri Cheri Lady audio */}
+      {/* Main Fullscreen Video - Auto-plays directly with Cheri Cheri Lady */}
       <div className="relative w-full h-full flex items-center justify-center bg-black">
         <video
           ref={videoRef}
@@ -206,6 +186,18 @@ export default function CinematicAppOpening() {
           onEnded={handleFinish}
           className="w-full h-full object-cover"
         />
+
+        {/* Subtle glowing prompt if browser strictly blocked unmuted initial sound */}
+        {needsGesture && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="px-5 py-3 rounded-2xl bg-black/70 border border-white/20 backdrop-blur-md shadow-2xl flex items-center gap-3 animate-pulse">
+              <Volume2 className="w-5 h-5 text-blue-400" />
+              <span className="text-sm font-semibold text-white">
+                Tap anywhere to start music
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom Progress Line */}
