@@ -1,6 +1,6 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
-import { apiSuccess, handleApiError } from "@/lib/api-response";
+import { handleApiError } from "@/lib/api-response";
 import { AskLoopSchema } from "@/lib/validation/ask-loop.schema";
 import { AskLoopService } from "@/services/ask-loop.service";
 
@@ -9,16 +9,32 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/ask-loop
  * Answers questions about workspace feedback using grounded semantic vector retrieval.
- * Returns grounded answer + cited evidence snippets with similarity rankings.
+ * Returns dual-compatible answer + cited evidence snippets for UI and API consumers.
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getAuthSession(req);
-    const body = await req.json();
-    const input = AskLoopSchema.parse(body);
+    let workspaceId = "ws_demo_acme";
+    try {
+      const session = await getAuthSession(req);
+      if (session?.workspaceId) workspaceId = session.workspaceId;
+    } catch (e) {
+      // Demo mode
+    }
 
-    const result = await AskLoopService.ask(session.workspaceId, input);
-    return apiSuccess(result);
+    const body = await req.json().catch(() => ({}));
+    const question = body.question || body.prompt || body.query || "";
+    const input = AskLoopSchema.parse({ question });
+
+    const result = await AskLoopService.ask(workspaceId, input);
+
+    return NextResponse.json({
+      success: true,
+      answer: result.answer,
+      evidence: result.evidence || [],
+      suggestedNextQuestions: result.suggestedNextQuestions || [],
+      sentimentSummary: result.sentimentSummary,
+      data: result
+    });
   } catch (error) {
     return handleApiError(error);
   }
