@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import {
   BarChart2,
@@ -7,15 +10,22 @@ import {
   FileText,
   Sparkles,
   ArrowRight,
-  ShieldCheck,
   Zap,
   Play
 } from "lucide-react";
-import CinematicIntroPlayer from "@/components/CinematicIntroPlayer";
+import CinematicAppOpening from "@/components/CinematicAppOpening";
 
 export default function Home() {
+  const [showIntroModal, setShowIntroModal] = useState(false);
+
   return (
     <main className="min-h-screen bg-slate-950 text-white selection:bg-blue-500/30">
+      {/* Fullscreen Cinematic Opening Sequence */}
+      <CinematicAppOpening
+        forceOpen={showIntroModal}
+        onClose={() => setShowIntroModal(false)}
+      />
+
       {/* Top Navigation */}
       <nav className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50 flex items-center justify-between px-6 py-4 md:px-12">
         <div className="flex items-center gap-3">
@@ -28,12 +38,13 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-3">
-          <a
-            href="#intro-video"
-            className="hidden md:flex items-center gap-1.5 text-xs sm:text-sm font-medium text-emerald-400 hover:text-emerald-300 px-3 py-1.5 rounded-lg bg-emerald-950/30 border border-emerald-500/20 transition"
+          <button
+            type="button"
+            onClick={() => setShowIntroModal(true)}
+            className="hidden md:flex items-center gap-1.5 text-xs sm:text-sm font-medium text-emerald-400 hover:text-emerald-300 px-3 py-1.5 rounded-lg bg-emerald-950/30 border border-emerald-500/20 transition hover:bg-emerald-900/40"
           >
-            <Play className="w-3 h-3 fill-emerald-400" /> 4K Intro Video
-          </a>
+            <Play className="w-3 h-3 fill-emerald-400" /> Replay 4K Intro
+          </button>
           <Link
             href="/dashboard"
             className="text-xs sm:text-sm font-medium text-slate-300 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-800/60 transition"
@@ -56,7 +67,7 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="mx-auto flex max-w-5xl flex-col items-center px-6 pt-16 pb-10 text-center">
+      <section className="mx-auto flex max-w-5xl flex-col items-center px-6 pt-20 pb-16 text-center">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-xs sm:text-sm font-medium text-blue-400 shadow-inner">
           <Sparkles className="w-4 h-4 text-blue-400" />
           Enterprise Customer-Feedback Intelligence Platform
@@ -83,12 +94,13 @@ export default function Home() {
             <BarChart2 className="w-5 h-5" /> Launch Live Dashboard <ArrowRight className="w-4 h-4" />
           </Link>
 
-          <a
-            href="#intro-video"
+          <button
+            type="button"
+            onClick={() => setShowIntroModal(true)}
             className="flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-950/40 px-5 py-3.5 text-sm sm:text-base font-semibold text-emerald-300 hover:bg-emerald-900/50 active:scale-95 transition"
           >
-            <Play className="w-4 h-4 fill-emerald-400" /> Watch 4K Intro Video
-          </a>
+            <Play className="w-4 h-4 fill-emerald-400" /> Play 4K Opening Video
+          </button>
 
           <Link
             href="/ask"
@@ -104,22 +116,6 @@ export default function Home() {
             <Zap className="w-5 h-5 text-cyan-400" /> Demo Console
           </Link>
         </div>
-      </section>
-
-      {/* 4K Cinematic Introduction Video Section */}
-      <section id="intro-video" className="mx-auto max-w-4xl px-4 sm:px-6 pt-4 pb-14">
-        <div className="text-center mb-5">
-          <span className="text-[11px] font-bold tracking-wider uppercase text-blue-400">
-            OFFICIAL 4K INTRODUCTION
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1">
-            Experience LOOP in High-Definition
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1.5">
-            Cinematic platform introduction paired with iconic English soundtrack hits.
-          </p>
-        </div>
-        <CinematicIntroPlayer />
       </section>
 
       {/* Feature Grid with Direct Navigation */}
