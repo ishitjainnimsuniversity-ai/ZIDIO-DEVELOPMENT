@@ -1,31 +1,17 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Volume2, VolumeX, ArrowRight, Play } from "lucide-react";
+import { Volume2, VolumeX, ArrowRight } from "lucide-react";
 
-interface CinematicAppOpeningProps {
-  forceOpen?: boolean;
-  onClose?: () => void;
-}
-
-export default function CinematicAppOpening({
-  forceOpen = false,
-  onClose,
-}: CinematicAppOpeningProps) {
+export default function CinematicAppOpening() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [needsSoundTap, setNeedsSoundTap] = useState(false);
   const [progress, setProgress] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Check if intro has already been shown in this session
   useEffect(() => {
-    if (forceOpen) {
-      setIsOpen(true);
-      return;
-    }
-
     try {
       const alreadySeen = sessionStorage.getItem("loop_cinematic_intro_seen");
       if (!alreadySeen) {
@@ -34,46 +20,49 @@ export default function CinematicAppOpening({
     } catch {
       setIsOpen(true);
     }
-  }, [forceOpen]);
+  }, []);
 
-  // Attempt direct playback with audio immediately when opened
+  // Play video automatically without any play button
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !videoRef.current) return;
 
-    const playDirectly = async () => {
+    const playVideo = async () => {
       if (!videoRef.current) return;
       try {
         videoRef.current.currentTime = 0;
         videoRef.current.muted = false;
         setIsMuted(false);
         await videoRef.current.play();
-        setNeedsSoundTap(false);
-      } catch (err) {
-        // Modern browser policy blocked unmuted autoplay: start muted and offer 1-click sound unmute
+      } catch {
+        // Fallback for browser autoplay policy: play automatically with audio un-muting on any first user interaction
         if (videoRef.current) {
           videoRef.current.muted = true;
           setIsMuted(true);
           try {
             await videoRef.current.play();
-            setNeedsSoundTap(true);
-          } catch {
-            setNeedsSoundTap(true);
-          }
+          } catch {}
         }
       }
     };
 
-    const timer = setTimeout(playDirectly, 100);
-    return () => clearTimeout(timer);
-  }, [isOpen]);
+    playVideo();
 
-  const handleUnmuteOrStart = () => {
-    if (!videoRef.current) return;
-    videoRef.current.muted = false;
-    setIsMuted(false);
-    videoRef.current.play();
-    setNeedsSoundTap(false);
-  };
+    // Global listener: on first click anywhere on the page, unmute if muted
+    const handleGlobalInteraction = () => {
+      if (videoRef.current && videoRef.current.muted) {
+        videoRef.current.muted = false;
+        setIsMuted(false);
+      }
+    };
+
+    window.addEventListener("click", handleGlobalInteraction, { once: true });
+    window.addEventListener("keydown", handleGlobalInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener("click", handleGlobalInteraction);
+      window.removeEventListener("keydown", handleGlobalInteraction);
+    };
+  }, [isOpen]);
 
   const handleSkipOrComplete = () => {
     if (videoRef.current) {
@@ -83,7 +72,6 @@ export default function CinematicAppOpening({
       sessionStorage.setItem("loop_cinematic_intro_seen", "true");
     } catch {}
     setIsOpen(false);
-    if (onClose) onClose();
   };
 
   const handleToggleMute = (e: React.MouseEvent) => {
@@ -91,7 +79,6 @@ export default function CinematicAppOpening({
     if (!videoRef.current) return;
     videoRef.current.muted = !isMuted;
     setIsMuted(!isMuted);
-    setNeedsSoundTap(false);
   };
 
   const handleTimeUpdate = () => {
@@ -104,13 +91,9 @@ export default function CinematicAppOpening({
   if (!isOpen) return null;
 
   return (
-    <div
-      onClick={needsSoundTap ? handleUnmuteOrStart : undefined}
-      className="fixed inset-0 z-[99999] bg-black flex flex-col items-center justify-center select-none overflow-hidden animate-in fade-in duration-300"
-    >
-      {/* Top Floating Controls: Minimal Mute & Skip only */}
+    <div className="fixed inset-0 z-[99999] bg-black flex flex-col items-center justify-center select-none overflow-hidden animate-in fade-in duration-300">
+      {/* Top Floating Minimal Controls */}
       <div className="absolute top-4 inset-x-4 sm:top-6 sm:inset-x-8 flex items-center justify-end gap-3 z-30 pointer-events-auto">
-        {/* Mute / Unmute Toggle */}
         <button
           type="button"
           onClick={handleToggleMute}
@@ -124,7 +107,6 @@ export default function CinematicAppOpening({
           )}
         </button>
 
-        {/* Skip to App */}
         <button
           type="button"
           onClick={handleSkipOrComplete}
@@ -134,34 +116,17 @@ export default function CinematicAppOpening({
         </button>
       </div>
 
-      {/* Main Video Viewport - Plays Directly with Cheri Cheri Lady */}
+      {/* Main Video Viewport - Plays Automatically without any Play Button */}
       <div className="relative w-full h-full flex items-center justify-center bg-black">
         <video
           ref={videoRef}
           src="/intro-video-cheri.mp4"
-          preload="auto"
+          autoPlay
           playsInline
           onTimeUpdate={handleTimeUpdate}
           onEnded={handleSkipOrComplete}
           className="w-full h-full object-cover"
         />
-
-        {/* Browser Autoplay Prompt: 1-click anywhere or on the button to enable sound */}
-        {needsSoundTap && (
-          <div
-            onClick={handleUnmuteOrStart}
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center cursor-pointer transition-all z-20"
-          >
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 p-0.5 shadow-2xl shadow-blue-500/50 hover:scale-110 active:scale-95 transition-transform flex items-center justify-center">
-              <div className="w-full h-full rounded-full bg-slate-950/90 flex items-center justify-center">
-                <Play className="w-8 h-8 text-white fill-white ml-1" />
-              </div>
-            </div>
-            <p className="mt-4 text-sm font-semibold text-white tracking-wide">
-              Click anywhere for sound
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Bottom Progress Line */}
