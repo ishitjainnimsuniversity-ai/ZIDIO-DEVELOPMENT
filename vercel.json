@@ -1,4 +1,5 @@
 {
+  "name": "the-project-of-ishit-and-mitali",
   "framework": "nextjs",
   "buildCommand": "prisma generate && next build",
   "installCommand": "npm install"
