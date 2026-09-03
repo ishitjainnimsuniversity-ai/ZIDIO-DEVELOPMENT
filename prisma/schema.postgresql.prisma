@@ -1,0 +1,141 @@
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+enum Role {
+  ADMIN
+  ANALYST
+  VIEWER
+}
+
+enum FeedbackStatus {
+  NEW
+  REVIEWED
+  RESOLVED
+  ARCHIVED
+}
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model Workspace {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  members     User[]
+  feedback    Feedback[]
+  themes      Theme[]
+  vocReports  VocReport[]
+
+  @@map("workspaces")
+}
+
+model User {
+  id          String     @id @default(cuid())
+  email       String     @unique
+  name        String?
+  password    String?
+  role        Role       @default(ANALYST)
+  workspaceId String
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([workspaceId])
+  @@map("users")
+}
+
+model Feedback {
+  id              String            @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  source          String            // "Website", "App", "Support", "Survey"
+  customerName    String?
+  customerEmail   String?
+  rawText         String            @db.Text
+  status          FeedbackStatus    @default(NEW)
+  sentiment       Sentiment?
+  sentimentScore  Float?            // -1.0 to 1.0
+  featureArea     String?
+  aiRationale     String?           @db.Text
+  aiStatus        ProcessingStatus  @default(PENDING)
+  embedding       Unsupported("vector(1536)")?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  analysis        AiAnalysis?
+  themes          Theme[]           @relation("FeedbackThemes")
+
+  @@index([workspaceId, createdAt(sort: Desc)])
+  @@index([workspaceId, sentiment])
+  @@index([workspaceId, status])
+  @@map("feedback")
+}
+
+model AiAnalysis {
+  id               String            @id @default(cuid())
+  feedbackId       String            @unique
+  feedback         Feedback          @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  sentiment        Sentiment
+  sentimentScore   Float
+  themes           String[]          // Extracted theme tags
+  featureArea      String
+  rationale        String            @db.Text
+  model            String            // e.g. "claude-3-5-sonnet-20241022"
+  processingStatus ProcessingStatus  @default(COMPLETED)
+  createdAt        DateTime          @default(now())
+
+  @@map("ai_analyses")
+}
+
+model Theme {
+  id          String     @id @default(cuid())
+  workspaceId String
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  count       Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  feedback    Feedback[] @relation("FeedbackThemes")
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("themes")
+}
+
+model VocReport {
+  id              String    @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  period          String    // e.g., "Last 30 Days"
+  totalFeedback   Int
+  positivePercent Float
+  neutralPercent  Float
+  negativePercent Float
+  topThemes       Json      // Array of top themes with counts & pct
+  spikes          Json      // Detected spikes
+  aiNarrative     String    @db.Text
+  generatedAt     DateTime  @default(now())
+
+  @@index([workspaceId, generatedAt(sort: Desc)])
+  @@map("voc_reports")
+}
