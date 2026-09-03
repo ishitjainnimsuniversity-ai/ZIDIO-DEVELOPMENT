@@ -25,9 +25,13 @@ export default function CinematicAppOpening() {
 
   const unmuteAudio = useCallback(() => {
     if (videoRef.current) {
-      videoRef.current.muted = false;
-      videoRef.current.volume = 1.0;
-      setIsMuted(false);
+      try {
+        videoRef.current.muted = false;
+        videoRef.current.volume = 1.0;
+        setIsMuted(false);
+      } catch (e) {
+        console.warn("Unmute failed:", e);
+      }
     }
   }, []);
 
@@ -35,6 +39,18 @@ export default function CinematicAppOpening() {
   useEffect(() => {
     if (!isOpen) return;
 
+    // 1. Initialize Web Audio Context if available
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        if (ctx.state === "suspended") {
+          ctx.resume().catch(() => {});
+        }
+      }
+    } catch {}
+
+    // 2. Play video automatically with full audio
     const playVideoWithAudio = async () => {
       const video = videoRef.current;
       if (!video) return;
@@ -46,8 +62,8 @@ export default function CinematicAppOpening() {
         await video.play();
         setIsMuted(false);
       } catch {
-        // Browser prevented unmuted autoplay before user interaction:
-        // Start video playback, but immediately attach listeners to unmute on first gesture
+        // If the browser strictly enforces muted initial autoplay:
+        // Play video immediately, and attach listeners to activate audio on the very first signal
         if (video) {
           video.muted = true;
           setIsMuted(true);
@@ -60,26 +76,30 @@ export default function CinematicAppOpening() {
       }
     };
 
-    const timer = setTimeout(playVideoWithAudio, 30);
+    const timer = setTimeout(playVideoWithAudio, 20);
 
-    // Any interaction immediately starts/unmutes the song
-    const handleGlobalInteraction = () => {
+    // Any window event immediately un-mutes the song without needing any button
+    const handleGlobalSignal = () => {
       unmuteAudio();
     };
 
-    window.addEventListener("pointerdown", handleGlobalInteraction, { passive: true });
-    window.addEventListener("touchstart", handleGlobalInteraction, { passive: true });
-    window.addEventListener("click", handleGlobalInteraction, { passive: true });
-    window.addEventListener("keydown", handleGlobalInteraction, { passive: true });
-    window.addEventListener("wheel", handleGlobalInteraction, { passive: true });
+    window.addEventListener("pointerdown", handleGlobalSignal, { passive: true });
+    window.addEventListener("touchstart", handleGlobalSignal, { passive: true });
+    window.addEventListener("click", handleGlobalSignal, { passive: true });
+    window.addEventListener("keydown", handleGlobalSignal, { passive: true });
+    window.addEventListener("wheel", handleGlobalSignal, { passive: true });
+    window.addEventListener("focus", handleGlobalSignal, { passive: true });
+    document.addEventListener("visibilitychange", handleGlobalSignal, { passive: true });
 
     return () => {
       clearTimeout(timer);
-      window.removeEventListener("pointerdown", handleGlobalInteraction);
-      window.removeEventListener("touchstart", handleGlobalInteraction);
-      window.removeEventListener("click", handleGlobalInteraction);
-      window.removeEventListener("keydown", handleGlobalInteraction);
-      window.removeEventListener("wheel", handleGlobalInteraction);
+      window.removeEventListener("pointerdown", handleGlobalSignal);
+      window.removeEventListener("touchstart", handleGlobalSignal);
+      window.removeEventListener("click", handleGlobalSignal);
+      window.removeEventListener("keydown", handleGlobalSignal);
+      window.removeEventListener("wheel", handleGlobalSignal);
+      window.removeEventListener("focus", handleGlobalSignal);
+      document.removeEventListener("visibilitychange", handleGlobalSignal);
     };
   }, [isOpen, unmuteAudio]);
 
@@ -93,7 +113,7 @@ export default function CinematicAppOpening() {
         sessionStorage.setItem("loop_cinematic_intro_seen", "true");
       } catch {}
       setIsOpen(false);
-    }, 400); // Fast smooth 400ms transition to open the app
+    }, 400); // Quick smooth 400ms transition to open the app
   };
 
   const handleToggleMute = (e: React.MouseEvent) => {
