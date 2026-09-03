@@ -2,7 +2,8 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { loginAction } from "./actions";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowRight, Sparkles } from "lucide-react";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [state, formAction, isPending] = useActionState<any, FormData>(loginAction as any, null);
@@ -41,10 +42,18 @@ export default function LoginPage() {
           </p>
         </div>
 
+        {/* Instant Access Direct Button */}
+        <Link
+          href="/dashboard"
+          className="mb-6 flex items-center justify-center gap-2 w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-xl shadow-blue-900/40 active:scale-98 transition text-center"
+        >
+          <Sparkles className="w-4 h-4" /> Enter Live Platform Directly <ArrowRight className="w-4 h-4" />
+        </Link>
+
         {/* 1-Click Instant Login Buttons */}
         <div className="mb-6 p-4 rounded-xl bg-slate-950/70 border border-slate-800">
           <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider text-center mb-3">
-            ⚡ 1-Click Instant Logins (Zero Typing Required)
+            ⚡ Quick Role Selection
           </p>
           <div className="grid grid-cols-2 gap-2 mb-2">
             <button

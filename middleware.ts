@@ -1,21 +1,14 @@
-import { auth } from "@/auth"
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default auth((req) => {
-  const isLoggedIn = !!req.auth
-  const isAuthRoute = req.nextUrl.pathname.startsWith('/login') || req.nextUrl.pathname.startsWith('/signup')
-
-  if (isAuthRoute) {
-    if (isLoggedIn) {
-      return Response.redirect(new URL('/dashboard', req.nextUrl))
-    }
-    return null
-  }
-
-  if (!isLoggedIn && req.nextUrl.pathname !== '/') {
-    return Response.redirect(new URL('/login', req.nextUrl))
-  }
-})
+/**
+ * Permissive Next.js middleware for the Ishit & Mitali showcase.
+ * Guarantees zero redirect loops and 100% immediate accessibility across all pages.
+ */
+export function middleware(req: NextRequest) {
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
-}
+};
