@@ -1,18 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import {
-  Play,
-  Volume2,
-  VolumeX,
-  Sparkles,
-  ArrowRight,
-  Music,
-  RotateCcw,
-  X
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Volume2, VolumeX, ArrowRight, Play } from "lucide-react";
 
 interface CinematicAppOpeningProps {
   forceOpen?: boolean;
@@ -24,21 +13,16 @@ export default function CinematicAppOpening({
   onClose,
 }: CinematicAppOpeningProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [activeTrack, setActiveTrack] = useState<"stereo" | "cheri">("stereo");
+  const [needsSoundTap, setNeedsSoundTap] = useState(false);
   const [progress, setProgress] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  const currentVideoSrc =
-    activeTrack === "stereo" ? "/intro-video.mp4" : "/intro-video-cheri.mp4";
 
   // Check if intro has already been shown in this session
   useEffect(() => {
     if (forceOpen) {
       setIsOpen(true);
-      setHasStarted(false);
       return;
     }
 
@@ -52,20 +36,43 @@ export default function CinematicAppOpening({
     }
   }, [forceOpen]);
 
-  const handleStartIntro = () => {
-    setHasStarted(true);
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      videoRef.current.muted = isMuted;
-      videoRef.current.play().catch(() => {
-        // Fallback for strict browser autoplay: mute and play
+  // Attempt direct playback with audio immediately when opened
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const playDirectly = async () => {
+      if (!videoRef.current) return;
+      try {
+        videoRef.current.currentTime = 0;
+        videoRef.current.muted = false;
+        setIsMuted(false);
+        await videoRef.current.play();
+        setNeedsSoundTap(false);
+      } catch (err) {
+        // Modern browser policy blocked unmuted autoplay: start muted and offer 1-click sound unmute
         if (videoRef.current) {
           videoRef.current.muted = true;
           setIsMuted(true);
-          videoRef.current.play();
+          try {
+            await videoRef.current.play();
+            setNeedsSoundTap(true);
+          } catch {
+            setNeedsSoundTap(true);
+          }
         }
-      });
-    }
+      }
+    };
+
+    const timer = setTimeout(playDirectly, 100);
+    return () => clearTimeout(timer);
+  }, [isOpen]);
+
+  const handleUnmuteOrStart = () => {
+    if (!videoRef.current) return;
+    videoRef.current.muted = false;
+    setIsMuted(false);
+    videoRef.current.play();
+    setNeedsSoundTap(false);
   };
 
   const handleSkipOrComplete = () => {
@@ -84,17 +91,7 @@ export default function CinematicAppOpening({
     if (!videoRef.current) return;
     videoRef.current.muted = !isMuted;
     setIsMuted(!isMuted);
-  };
-
-  const handleSwitchTrack = (track: "stereo" | "cheri", e: React.MouseEvent) => {
-    e.stopPropagation();
-    setActiveTrack(track);
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      if (hasStarted) {
-        videoRef.current.play();
-      }
-    }
+    setNeedsSoundTap(false);
   };
 
   const handleTimeUpdate = () => {
@@ -107,168 +104,72 @@ export default function CinematicAppOpening({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-black flex flex-col items-center justify-center select-none overflow-hidden animate-in fade-in duration-500">
-      {/* Background ambient lighting */}
-      <div className="absolute inset-0 bg-radial from-blue-900/20 via-black to-black pointer-events-none" />
-
-      {/* Top Bar Floating Controls */}
-      <div className="absolute top-4 inset-x-4 sm:top-6 sm:inset-x-8 flex items-center justify-between z-30 pointer-events-auto">
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-ping" />
-          <span className="text-xs font-bold text-white tracking-wider uppercase font-mono">
-            LOOP CINEMATIC OPENING (4K)
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Audio Switcher */}
-          <div className="hidden sm:flex items-center gap-1 bg-slate-900/80 border border-slate-800 p-1 rounded-full text-xs backdrop-blur-md">
-            <Music className="w-3.5 h-3.5 text-slate-400 ml-2 mr-1" />
-            <button
-              type="button"
-              onClick={(e) => handleSwitchTrack("stereo", e)}
-              className={`px-3 py-1 rounded-full text-[11px] font-semibold transition ${
-                activeTrack === "stereo"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Stereo Love
-            </button>
-            <button
-              type="button"
-              onClick={(e) => handleSwitchTrack("cheri", e)}
-              className={`px-3 py-1 rounded-full text-[11px] font-semibold transition ${
-                activeTrack === "cheri"
-                  ? "bg-purple-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Cheri Cheri Lady
-            </button>
-          </div>
-
-          {/* Mute Toggle */}
-          {hasStarted && (
-            <button
-              type="button"
-              onClick={handleToggleMute}
-              className="p-2.5 rounded-full bg-slate-900/80 border border-slate-800 text-white hover:bg-slate-800 transition backdrop-blur-md"
-              title={isMuted ? "Unmute" : "Mute"}
-            >
-              {isMuted ? (
-                <VolumeX className="w-4 h-4 text-rose-400" />
-              ) : (
-                <Volume2 className="w-4 h-4 text-emerald-400" />
-              )}
-            </button>
+    <div
+      onClick={needsSoundTap ? handleUnmuteOrStart : undefined}
+      className="fixed inset-0 z-[99999] bg-black flex flex-col items-center justify-center select-none overflow-hidden animate-in fade-in duration-300"
+    >
+      {/* Top Floating Controls: Minimal Mute & Skip only */}
+      <div className="absolute top-4 inset-x-4 sm:top-6 sm:inset-x-8 flex items-center justify-end gap-3 z-30 pointer-events-auto">
+        {/* Mute / Unmute Toggle */}
+        <button
+          type="button"
+          onClick={handleToggleMute}
+          className="p-2.5 rounded-full bg-black/60 hover:bg-black/80 border border-white/20 text-white transition backdrop-blur-md"
+          title={isMuted ? "Unmute" : "Mute"}
+        >
+          {isMuted ? (
+            <VolumeX className="w-4 h-4 text-rose-400" />
+          ) : (
+            <Volume2 className="w-4 h-4 text-emerald-400" />
           )}
+        </button>
 
-          {/* Skip Intro Button */}
-          <button
-            type="button"
-            onClick={handleSkipOrComplete}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold backdrop-blur-md active:scale-95 transition shadow-lg"
-          >
-            Skip to App <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        {/* Skip to App */}
+        <button
+          type="button"
+          onClick={handleSkipOrComplete}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold backdrop-blur-md active:scale-95 transition shadow-lg"
+        >
+          Skip <ArrowRight className="w-3.5 h-3.5" />
+        </button>
       </div>
 
-      {/* Main Fullscreen Video Container */}
-      <div className="relative w-full h-full flex items-center justify-center">
+      {/* Main Video Viewport - Plays Directly with Cheri Cheri Lady */}
+      <div className="relative w-full h-full flex items-center justify-center bg-black">
         <video
           ref={videoRef}
-          key={currentVideoSrc}
-          src={currentVideoSrc}
+          src="/intro-video-cheri.mp4"
           preload="auto"
           playsInline
           onTimeUpdate={handleTimeUpdate}
           onEnded={handleSkipOrComplete}
-          className={`w-full h-full object-cover transition-opacity duration-700 ${
-            hasStarted ? "opacity-100" : "opacity-30 blur-sm"
-          }`}
+          className="w-full h-full object-cover"
         />
 
-        {/* Initial Launch Screen Before User Starts Audio/Video */}
-        {!hasStarted && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-20 bg-black/60 backdrop-blur-md">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-xs font-semibold text-blue-400 mb-6 shadow-inner">
-              <Sparkles className="w-4 h-4 text-blue-400" />
-              The Project of Ishit Jain & Mitali
+        {/* Browser Autoplay Prompt: 1-click anywhere or on the button to enable sound */}
+        {needsSoundTap && (
+          <div
+            onClick={handleUnmuteOrStart}
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center cursor-pointer transition-all z-20"
+          >
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 p-0.5 shadow-2xl shadow-blue-500/50 hover:scale-110 active:scale-95 transition-transform flex items-center justify-center">
+              <div className="w-full h-full rounded-full bg-slate-950/90 flex items-center justify-center">
+                <Play className="w-8 h-8 text-white fill-white ml-1" />
+              </div>
             </div>
-
-            <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight max-w-2xl">
-              Welcome to <span className="text-blue-500">LOOP.</span>
-            </h1>
-
-            <p className="mt-4 text-sm sm:text-base text-slate-300 max-w-md leading-relaxed">
-              Experience the cinematic 4K platform entry with your choice of soundtrack before entering.
+            <p className="mt-4 text-sm font-semibold text-white tracking-wide">
+              Click anywhere for sound
             </p>
-
-            {/* Soundtrack Selector */}
-            <div className="mt-6 flex items-center gap-2 bg-slate-900/90 border border-slate-800 p-1.5 rounded-2xl">
-              <button
-                type="button"
-                onClick={(e) => handleSwitchTrack("stereo", e)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
-                  activeTrack === "stereo"
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                🎵 Stereo Love (Edward Maya)
-              </button>
-              <button
-                type="button"
-                onClick={(e) => handleSwitchTrack("cheri", e)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
-                  activeTrack === "cheri"
-                    ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                🎵 Cheri Cheri Lady (Modern Talking)
-              </button>
-            </div>
-
-            {/* Launch Button */}
-            <div className="mt-8 flex flex-col sm:flex-row items-center gap-3">
-              <button
-                type="button"
-                onClick={handleStartIntro}
-                className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm sm:text-base shadow-2xl shadow-blue-600/50 hover:scale-105 active:scale-95 transition"
-              >
-                <Play className="w-5 h-5 fill-white" />
-                Play 4K Intro with Music
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSkipOrComplete}
-                className="px-6 py-4 rounded-2xl border border-slate-700 bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800 text-sm font-semibold transition"
-              >
-                Directly Enter App ➔
-              </button>
-            </div>
           </div>
         )}
       </div>
 
       {/* Bottom Progress Line */}
-      {hasStarted && (
-        <div className="absolute bottom-0 inset-x-0 h-1.5 bg-slate-900 z-30">
-          <div
-            className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 transition-all duration-200"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      )}
-
-      {/* Bottom Branding Caption */}
-      <div className="absolute bottom-4 inset-x-4 sm:bottom-6 sm:inset-x-8 flex items-center justify-between z-20 pointer-events-none text-[11px] text-slate-400">
-        <span>LOOP Enterprise AI • Customer Feedback Intelligence</span>
-        <span className="font-mono">Created by Ishit Jain & Mitali</span>
+      <div className="absolute bottom-0 inset-x-0 h-1 bg-white/10 z-30">
+        <div
+          className="h-full bg-blue-500 transition-all duration-200"
+          style={{ width: `${progress}%` }}
+        />
       </div>
     </div>
   );
